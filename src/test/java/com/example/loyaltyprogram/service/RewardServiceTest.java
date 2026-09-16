@@ -3,7 +3,6 @@ package com.example.loyaltyprogram.service;
 import com.example.loyaltyprogram.dto.request.CreateRewardRequest;
 import com.example.loyaltyprogram.dto.request.UpdateRewardRequest;
 import com.example.loyaltyprogram.dto.response.RewardResponse;
-import com.example.loyaltyprogram.exception.InvalidRequestException;
 import com.example.loyaltyprogram.exception.ProgramExpiredException;
 import com.example.loyaltyprogram.exception.ProgramNotFoundException;
 import com.example.loyaltyprogram.exception.RewardNotFoundException;
@@ -74,45 +73,6 @@ public class RewardServiceTest {
                 () -> Assertions.assertEquals(request.startDate(), rewardCaptor.getValue().getPeriod().getStartDate()),
                 () -> Assertions.assertEquals(request.endDate(), rewardCaptor.getValue().getPeriod().getEndDate())
         );
-    }
-
-    @Test
-    void createReward_blankName_throwsInvalidRequestException() {
-        //given
-        CreateRewardRequest request = new CreateRewardRequest("", 100, 10, null, null);
-        //when + then
-        InvalidRequestException ex = Assertions.assertThrows(
-                InvalidRequestException.class,
-                () -> rewardService.createReward(1L, request)
-        );
-        Assertions.assertEquals("name cannot be blank", ex.getMessage());
-        Mockito.verify(rewardRepository, Mockito.never()).save(any());
-    }
-
-    @Test
-    void createReward_nonPositivePointsCost_throwsInvalidRequestException() {
-        //given
-        CreateRewardRequest request = new CreateRewardRequest("Coffee", 0, 10, LocalDateTime.now().minusDays(10), LocalDateTime.now().plusDays(10));
-        //when + then
-        InvalidRequestException ex = Assertions.assertThrows(
-                InvalidRequestException.class,
-                () -> rewardService.createReward(1L, request)
-        );
-        Assertions.assertEquals("pointsCost must be greater than 0", ex.getMessage());
-        Mockito.verify(rewardRepository, Mockito.never()).save(any());
-    }
-
-    @Test
-    void createReward_negativeAvailableQuantity_throwsInvalidRequestException() {
-        //given
-        CreateRewardRequest request = new CreateRewardRequest("Coffee", 100, -1, LocalDateTime.now().minusDays(10), LocalDateTime.now().plusDays(10));
-        //when + then
-        InvalidRequestException ex = Assertions.assertThrows(
-                InvalidRequestException.class,
-                () -> rewardService.createReward(1L, request)
-        );
-        Assertions.assertEquals("availableQuantity cannot be negative", ex.getMessage());
-        Mockito.verify(rewardRepository, Mockito.never()).save(any());
     }
 
     @Test

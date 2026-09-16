@@ -32,15 +32,10 @@ public class RewardService {
     @Transactional
     public RewardResponse createReward(Long programId, CreateRewardRequest request) {
         log.debug("Attempting to create reward name='{}' for programId={}", request.name(), programId);
-        Validate.notBlank(request.name(), "name");
-        Validate.notNull(request.startDate(), "startDate");
-        Validate.positive(request.pointsCost(), "pointsCost");
-        Validate.nonNegative(request.availableQuantity(), "availableQuantity");
-        Validate.date(request.startDate(), request.endDate());
         LoyaltyProgram program = findProgramById(programId);
 
         if (!program.isActiveAt(LocalDateTime.now())) {
-            log.warn("Cannot create reward. Program programId={} is expired or inactive", programId);
+            log.error("Cannot create reward. Program programId={} is expired or inactive", programId);
             throw new ProgramExpiredException(programId);
         }
 
@@ -89,7 +84,7 @@ public class RewardService {
     private LoyaltyProgram findProgramById(Long programId) {
         return programRepository.findById(programId)
                 .orElseThrow(() -> {
-                    log.warn("Loyalty program not found for programId={}", programId);
+                    log.error("Loyalty program not found for programId={}", programId);
                     return new ProgramNotFoundException(programId);
                 });
     }
@@ -97,7 +92,7 @@ public class RewardService {
     private Reward findRewardById(Long rewardId) {
         return rewardRepository.findById(rewardId)
                 .orElseThrow(() -> {
-                    log.warn("Reward not found for rewardId={}", rewardId);
+                    log.error("Reward not found for rewardId={}", rewardId);
                     return new RewardNotFoundException(rewardId);
                 });
     }

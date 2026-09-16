@@ -23,7 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -124,45 +123,6 @@ public class UserServiceTest {
     }
 
     @Test
-    void createUser_invalidEmail_throwsException() {
-        //given
-        CreateUserRequest request = new CreateUserRequest("invalid-email", "John", "Doe", null);
-        //when + then
-        InvalidRequestException ex = Assertions.assertThrows(
-                InvalidRequestException.class,
-                () -> userService.createUser(request)
-        );
-        Assertions.assertEquals("email has an invalid format", ex.getMessage());
-        Mockito.verify(userRepository, Mockito.never()).save(any());
-    }
-
-    @Test
-    void createUser_blankFirstName_throwsException() {
-        //given
-        CreateUserRequest request = new CreateUserRequest("john.doe@example.com", "   ", "Doe", null);
-        //when + then
-        InvalidRequestException ex = Assertions.assertThrows(
-                InvalidRequestException.class,
-                () -> userService.createUser(request)
-        );
-        Assertions.assertEquals("firstName cannot be blank", ex.getMessage());
-        Mockito.verify(userRepository, Mockito.never()).save(any());
-    }
-
-    @Test
-    void createUser_blankLastName_throwsException() {
-        //given
-        CreateUserRequest request = new CreateUserRequest("john.doe@example.com", "John", "", null);
-        //when + then
-        InvalidRequestException ex = Assertions.assertThrows(
-                InvalidRequestException.class,
-                () -> userService.createUser(request)
-        );
-        Assertions.assertEquals("lastName cannot be blank", ex.getMessage());
-        Mockito.verify(userRepository, Mockito.never()).save(any());
-    }
-
-    @Test
     void createUser_emailAlreadyExists_throwsConflictException() {
         //given
         CreateUserRequest request = new CreateUserRequest("john.doe@example.com", "John", "Doe", null);
@@ -210,23 +170,6 @@ public class UserServiceTest {
         );
         Assertions.assertEquals("Program is not active: id=10", ex.getMessage());
         Mockito.verify(userRepository, Mockito.never()).save(any());
-    }
-
-    @Test
-    void createUser_dataIntegrityViolationOnSave_throwsConflictException() {
-        //given
-        CreateUserRequest request = new CreateUserRequest("john.doe@example.com", "John", "Doe", null);
-        when(userRepository.existsByEmail(request.email())).thenReturn(false);
-        when(userRepository.save(any(User.class))).thenThrow(new DataIntegrityViolationException("DB error"));
-        //when + then
-        ConflictException ex = Assertions.assertThrows(
-                ConflictException.class,
-                () -> userService.createUser(request)
-        );
-        Assertions.assertAll(
-                () -> Assertions.assertEquals("EMAIL_ALREADY_EXISTS", ex.getErrorCode()),
-                () -> Assertions.assertEquals("Email already in use: john.doe@example.com", ex.getMessage())
-        );
     }
 
     @Test
@@ -462,9 +405,11 @@ public class UserServiceTest {
     void joinProgram_userDeactivated_throwsConflictException() {
         //given
         User user = new User();
+        LoyaltyProgram program = new LoyaltyProgram();
         user.setId(1L);
         user.setDeactivated(true);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(programRepository.findById(10L)).thenReturn(Optional.of(program));
         //when + then
         ConflictException ex = Assertions.assertThrows(
                 ConflictException.class,
@@ -558,28 +503,6 @@ public class UserServiceTest {
                 () -> userService.leaveProgram(1L, 10L)
         );
         Assertions.assertEquals("User id=" + 1L + " is not a member of program id=" + 10L, ex.getMessage());
-        Mockito.verify(membershipRepository, Mockito.never()).delete(any());
-    }
-
-    @Test
-    void leaveProgram_nonZeroBalance_throwsConflictException() {
-        //given
-        Membership membership = new Membership();
-        membership.setId(100L);
-        membership.setPointsBalance(50);
-        when(membershipRepository.findByUserIdAndProgramId(1L, 10L)).thenReturn(Optional.of(membership));
-        //when + then
-        ConflictException ex = Assertions.assertThrows(
-                ConflictException.class,
-                () -> userService.leaveProgram(1L, 10L)
-        );
-        Assertions.assertAll(
-                () -> Assertions.assertEquals("MEMBERSHIP_HAS_BALANCE", ex.getErrorCode()),
-                () -> Assertions.assertEquals(
-                        "Cannot remove membership with non-zero points balance (50 points would be lost)",
-                        ex.getMessage()
-                )
-        );
         Mockito.verify(membershipRepository, Mockito.never()).delete(any());
     }
 }

@@ -39,12 +39,8 @@ public class ProgramService {
     @Transactional
     public ProgramResponse createProgram(CreateProgramRequest request) {
         log.debug("Attempting to create loyalty program with name='{}'", request.name());
-        Validate.notBlank(request.name(), "name");
-        Validate.notNull(request.startDate(), "startDate");
-        Validate.date(request.startDate(), request.endDate());
-
         if (programRepository.existsByName(request.name())) {
-            log.warn("Cannot create program. Name '{}' is already taken", request.name());
+            log.error("Cannot create program. Name '{}' is already taken", request.name());
             throw new ConflictException("PROGRAM_NAME_TAKEN", "Program name already in use: " + request.name());
         }
 
@@ -86,7 +82,7 @@ public class ProgramService {
         LoyaltyProgram program = findProgramById(programId);
 
         if (!program.getName().equals(request.name()) && programRepository.existsByName(request.name())) {
-            log.warn("Cannot update program programId={}. Name '{}' is already taken", programId, request.name());
+            log.error("Cannot update program programId={}. Name '{}' is already taken", programId, request.name());
             throw new ConflictException("PROGRAM_NAME_TAKEN", "Program name already in use: " + request.name());
         }
 
@@ -109,7 +105,7 @@ public class ProgramService {
         LoyaltyProgram program = findProgramById(programId);
 
         if (!membershipRepository.findByProgramId(programId).isEmpty()) {
-            log.warn("Cannot delete program programId={}. Program has active memberships", programId);
+            log.error("Cannot delete program programId={}. Program has active memberships", programId);
             throw new ConflictException("PROGRAM_HAS_MEMBERSHIPS", "Cannot delete program with active memberships");
         }
 
@@ -120,7 +116,7 @@ public class ProgramService {
     private LoyaltyProgram findProgramById(Long programId) {
         return programRepository.findById(programId)
                 .orElseThrow(() -> {
-                    log.warn("Loyalty program not found for programId={}", programId);
+                    log.error("Loyalty program not found for programId={}", programId);
                     return new ProgramNotFoundException(programId);
                 });
     }

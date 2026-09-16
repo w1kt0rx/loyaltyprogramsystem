@@ -17,7 +17,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -39,10 +38,11 @@ public class ProgramController {
             @ApiResponse(responseCode = "409", description = "Program name already taken",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
-    public ResponseEntity<ProgramResponse> createProgram(@RequestBody CreateProgramRequest request) {
+    public ProgramResponse createProgram(@RequestBody CreateProgramRequest request) {
         log.info("Received POST request to create new program");
-        return ResponseEntity.status(HttpStatus.CREATED).body(programService.createProgram(request));
+        return programService.createProgram(request);
     }
 
     @Operation(summary = "List loyalty programs",
@@ -51,16 +51,17 @@ public class ProgramController {
             @ApiResponse(responseCode = "200", description = "Page of programs",
                     content = @Content(schema = @Schema(implementation = PageDto.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @GetMapping
-    public ResponseEntity<PageDto<ProgramResponse>> getPrograms(
+    public PageDto<ProgramResponse> getPrograms(
             @Parameter(description = "If true, returns only programs active at the current moment")
             @RequestParam(required = false) Boolean active,
             @Parameter(description = "If true, includes programs whose period has already ended")
             @RequestParam(defaultValue = "false") boolean includeExpired,
             PageRequestDto pageRequest) {
-        log.debug("Received GET request to list programs: active={}, includeExpired={}, page={}, size={}",
+        log.info("Received GET request to list programs: active={}, includeExpired={}, page={}, size={}",
                 active, includeExpired, pageRequest.page(), pageRequest.size());
-        return ResponseEntity.ok(programService.listPrograms(active, includeExpired, pageRequest));
+        return programService.listPrograms(active, includeExpired, pageRequest);
     }
 
     @Operation(summary = "List members of a program",
@@ -70,10 +71,11 @@ public class ProgramController {
             @ApiResponse(responseCode = "404", description = "Program does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @GetMapping("/{programId}/users")
-    public ResponseEntity<List<BalanceResponse>> getProgramUsers(
+    public List<BalanceResponse> getProgramUsers(
             @Parameter(description = "Program id") @PathVariable Long programId) {
-        return ResponseEntity.ok(programService.getProgramMembers(programId));
+        return programService.getProgramMembers(programId);
     }
 
     @Operation(summary = "Get a program by id")
@@ -82,11 +84,12 @@ public class ProgramController {
             @ApiResponse(responseCode = "404", description = "Program does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @GetMapping("/{programId}")
-    public ResponseEntity<ProgramResponse> getProgram(
+    public ProgramResponse getProgram(
             @Parameter(description = "Program id") @PathVariable Long programId) {
-        log.debug("Received GET request for programId={}", programId);
-        return ResponseEntity.ok(programService.getProgram(programId));
+        log.info("Received GET request for programId={}", programId);
+        return programService.getProgram(programId);
     }
 
     @Operation(summary = "Update a program",
@@ -98,12 +101,13 @@ public class ProgramController {
             @ApiResponse(responseCode = "409", description = "Program name already taken",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @PutMapping("/{programId}")
-    public ResponseEntity<ProgramResponse> updateProgram(
+    public ProgramResponse updateProgram(
             @Parameter(description = "Program id") @PathVariable Long programId,
             @RequestBody UpdateProgramRequest request) {
         log.info("Received PUT request to update programId={}", programId);
-        return ResponseEntity.ok(programService.updateProgram(programId, request));
+        return programService.updateProgram(programId, request);
     }
 
     @Operation(summary = "Delete a program",
@@ -115,11 +119,11 @@ public class ProgramController {
             @ApiResponse(responseCode = "409", description = "Program has active memberships",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{programId}")
-    public ResponseEntity<Void> deleteProgram(
+    public void deleteProgram(
             @Parameter(description = "Program id") @PathVariable Long programId) {
         log.info("Received DELETE request for programId={}", programId);
         programService.deleteProgram(programId);
-        return ResponseEntity.noContent().build();
     }
 }

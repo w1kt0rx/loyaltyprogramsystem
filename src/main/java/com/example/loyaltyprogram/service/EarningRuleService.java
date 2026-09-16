@@ -31,14 +31,10 @@ public class EarningRuleService {
     @Transactional
     public EarningRuleResponse createRule(Long programId, CreateEarningRuleRequest request) {
         log.debug("Attempting to create earning rule for programId={}, eventType={}", programId, request.eventType());
-        Validate.notNull(request.eventType(), "eventType");
-        Validate.positive(request.points(), "points");
-        Validate.notNull(request.startDate(), "startDate");
-        Validate.date(request.startDate(), request.endDate());
         LoyaltyProgram program = findProgramById(programId);
 
         if (!program.isActiveAt(LocalDateTime.now())) {
-            log.warn("Cannot create earning rule. Program programId={} is expired or inactive", programId);
+            log.error("Cannot create earning rule. Program programId={} is expired or inactive", programId);
             throw new ProgramExpiredException(program.getId());
         }
 
@@ -73,8 +69,6 @@ public class EarningRuleService {
     @Transactional
     public EarningRuleResponse updateEarningRule(Long earningRuleId, UpdateEarningRuleRequest request) {
         log.debug("Attempting to update earning rule earningRuleId={}", earningRuleId);
-        Validate.notNull(request.startDate(), "startDate");
-        Validate.date(request.startDate(), request.endDate());
         EarningRule earningRule = findEarningRuleById(earningRuleId);
 
         if (request.programId() != null && !request.programId().equals(earningRule.getProgram().getId())) {
@@ -99,7 +93,7 @@ public class EarningRuleService {
     private LoyaltyProgram findProgramById(Long programId) {
         return programRepository.findById(programId)
                 .orElseThrow(() -> {
-                    log.warn("Loyalty program not found for programId={}", programId);
+                    log.error("Loyalty program not found for programId={}", programId);
                     return new ProgramNotFoundException(programId);
                 });
     }
@@ -107,7 +101,7 @@ public class EarningRuleService {
     private EarningRule findEarningRuleById(Long earningRuleId) {
         return earningRuleRepository.findById(earningRuleId)
                 .orElseThrow(() -> {
-                    log.warn("Earning rule not found for earningRuleId={}", earningRuleId);
+                    log.error("Earning rule not found for earningRuleId={}", earningRuleId);
                     return new EarningRuleNotFoundException(earningRuleId);
                 });
     }
@@ -119,7 +113,7 @@ public class EarningRuleService {
                 .anyMatch(existing -> existing.getPeriod().overlaps(newPeriod));
 
         if (overlaps) {
-            log.warn("Earning rule overlap detected for programId={}, eventType={}, period={}",
+            log.error("Earning rule overlap detected for programId={}, eventType={}, period={}",
                     programId, eventType, newPeriod);
             throw new ConflictException("EARNING_RULE_OVERLAP",
                     "An active earning rule for event " + eventType + " already exists in an overlapping period");

@@ -15,7 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
@@ -41,12 +41,13 @@ public class PointsController {
             @ApiResponse(responseCode = "409", description = "Program inactive or no matching earning rule",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @PostMapping("/earn")
-    public ResponseEntity<EarnPointsResponse> earn(
+    public EarnPointsResponse earn(
             @Parameter(description = "User id") @PathVariable Long userId,
             @RequestBody EarnPointsRequest request) {
         log.info("Received POST request to earn points for userId={}", userId);
-        return ResponseEntity.ok(pointsService.earnPoints(userId, request));
+        return pointsService.earnPoints(userId, request);
     }
 
     @Operation(summary = "Get points transaction history",
@@ -57,13 +58,14 @@ public class PointsController {
             @ApiResponse(responseCode = "403", description = "User does not belong to the given program",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @GetMapping("/history")
-    public ResponseEntity<PageDto<PointsHistoryResponse>> history(
+    public PageDto<PointsHistoryResponse> history(
             @Parameter(description = "User id") @PathVariable Long userId,
             @Parameter(description = "Program id") @RequestParam Long programId,
             PageRequestDto pageRequest) {
-        log.debug("Received GET request for points history: userId={}, programId={}, page={}, size={}",
+        log.info("Received GET request for points history: userId={}, programId={}, page={}, size={}",
                 userId, programId, pageRequest.page(), pageRequest.size());
-        return ResponseEntity.ok(pointsService.getHistory(userId, programId, pageRequest));
+        return pointsService.getHistory(userId, programId, pageRequest);
     }
 }

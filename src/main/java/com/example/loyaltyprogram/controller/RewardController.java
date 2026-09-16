@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,12 +36,13 @@ public class RewardController {
             @ApiResponse(responseCode = "409", description = "Program has expired",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/programs/{programId}/rewards")
-    public ResponseEntity<RewardResponse> createReward(
+    public RewardResponse createReward(
             @Parameter(description = "Program id") @PathVariable Long programId,
             @RequestBody CreateRewardRequest request) {
         log.info("Received POST request to create reward for programId={}", programId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(rewardService.createReward(programId, request));
+        return rewardService.createReward(programId, request);
     }
 
     @Operation(summary = "List rewards for a program")
@@ -51,11 +51,12 @@ public class RewardController {
             @ApiResponse(responseCode = "404", description = "Program does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @GetMapping("/programs/{programId}/rewards")
-    public ResponseEntity<List<RewardResponse>> listRewards(
+    public List<RewardResponse> listRewards(
             @Parameter(description = "Program id") @PathVariable Long programId) {
-        log.debug("Received GET request to list rewards for programId={}", programId);
-        return ResponseEntity.ok(rewardService.listRewards(programId));
+        log.info("Received GET request to list rewards for programId={}", programId);
+        return rewardService.listRewards(programId);
     }
 
     @Operation(summary = "Get a reward by id")
@@ -64,11 +65,12 @@ public class RewardController {
             @ApiResponse(responseCode = "404", description = "Reward does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @GetMapping("/rewards/{rewardId}")
-    public ResponseEntity<RewardResponse> getReward(
+    public RewardResponse getReward(
             @Parameter(description = "Reward id") @PathVariable Long rewardId) {
-        log.debug("Received GET request for rewardId={}", rewardId);
-        return ResponseEntity.ok(rewardService.getReward(rewardId));
+        log.info("Received GET request for rewardId={}", rewardId);
+        return rewardService.getReward(rewardId);
     }
 
     @Operation(summary = "Update a reward",
@@ -78,12 +80,13 @@ public class RewardController {
             @ApiResponse(responseCode = "404", description = "Reward does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @PutMapping("/rewards/{rewardId}")
-    public ResponseEntity<RewardResponse> updateReward(
+    public RewardResponse updateReward(
             @Parameter(description = "Reward id") @PathVariable Long rewardId,
             @RequestBody UpdateRewardRequest request) {
         log.info("Received POST request to update rewardId={}", rewardId);
-        return ResponseEntity.ok(rewardService.updateReward(rewardId, request));
+        return rewardService.updateReward(rewardId, request);
     }
 
     @Operation(summary = "Delete a reward")
@@ -92,11 +95,11 @@ public class RewardController {
             @ApiResponse(responseCode = "404", description = "Reward does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/rewards/{rewardId}")
-    public ResponseEntity<Void> deleteReward(
+    public void deleteReward(
             @Parameter(description = "Reward id") @PathVariable Long rewardId) {
         log.info("Received DELETE request for rewardId={}", rewardId);
         rewardService.deleteReward(rewardId);
-        return ResponseEntity.noContent().build();
     }
 }

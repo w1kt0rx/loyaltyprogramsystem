@@ -17,11 +17,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.net.URI;
 import java.util.List;
 
 @Slf4j
@@ -43,15 +40,11 @@ public class UserController {
             @ApiResponse(responseCode = "409", description = "Email already in use or program expired",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
-    public ResponseEntity<UserResponse> createUser(@RequestBody CreateUserRequest request) {
+    public UserResponse createUser(@RequestBody CreateUserRequest request) {
         log.info("Received POST request to create new user with email={}", request.email());
-        UserResponse created = userService.createUser(request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(created.id())
-                .toUri();
-        return ResponseEntity.created(location).body(created);
+        return userService.createUser(request);
     }
 
     @Operation(summary = "Search users",
@@ -60,17 +53,18 @@ public class UserController {
             @ApiResponse(responseCode = "200", description = "Page of results",
                     content = @Content(schema = @Schema(implementation = PageDto.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @GetMapping
-    public ResponseEntity<PageDto<UserResponse>> getUsers(
+    public PageDto<UserResponse> getUsers(
             @Parameter(description = "Filter by email fragment (case-insensitive)")
             @RequestParam(required = false) String email,
             @Parameter(description = "Filter by last name fragment (case-insensitive)")
             @RequestParam(required = false) String lastName,
             @ModelAttribute PageRequestDto pageRequest
     ) {
-        log.debug("Received GET request to search users: email={}, lastName={}, page={}, size={}",
+        log.info("Received GET request to search users: email={}, lastName={}, page={}, size={}",
                 email, lastName, pageRequest.page(), pageRequest.size());
-        return ResponseEntity.ok(userService.searchUsers(email, lastName, pageRequest));
+        return userService.searchUsers(email, lastName, pageRequest);
     }
 
     @Operation(summary = "Get a user's program memberships",
@@ -80,11 +74,12 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "User does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @GetMapping("/{userId}/programs")
-    public ResponseEntity<List<BalanceResponse>> getUserPrograms(
+    public List<BalanceResponse> getUserPrograms(
             @Parameter(description = "User id") @PathVariable Long userId) {
-        log.debug("Received GET request for user programs: userId={}", userId);
-        return ResponseEntity.ok(userService.getUserPrograms(userId));
+        log.info("Received GET request for user programs: userId={}", userId);
+        return userService.getUserPrograms(userId);
     }
 
     @Operation(summary = "Get a user by id")
@@ -93,11 +88,12 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "User does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @GetMapping("/{userId}")
-    public ResponseEntity<UserResponse> getUser(
+    public UserResponse getUser(
             @Parameter(description = "User id") @PathVariable Long userId) {
-        log.debug("Received GET request for userId={}", userId);
-        return ResponseEntity.ok(userService.getUser(userId));
+        log.info("Received GET request for userId={}", userId);
+        return userService.getUser(userId);
     }
 
     @Operation(summary = "Update a user's profile data",
@@ -107,12 +103,13 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "User does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @PutMapping("/{userId}")
-    public ResponseEntity<UserResponse> updateUser(
+    public UserResponse updateUser(
             @Parameter(description = "User id") @PathVariable Long userId,
             @RequestBody UpdateUserRequest request) {
         log.info("Received PUT request to update userId={}", userId);
-        return ResponseEntity.ok(userService.update(userId, request));
+        return userService.update(userId, request);
     }
 
     @Operation(summary = "Delete (deactivate) a user",
@@ -122,12 +119,12 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "User does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{userId}")
-    public ResponseEntity<Void> delete(
+    public void delete(
             @Parameter(description = "User id") @PathVariable Long userId) {
         log.info("Received DELETE request for userId={}", userId);
         userService.delete(userId);
-        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Join a user to a program",
@@ -139,13 +136,13 @@ public class UserController {
             @ApiResponse(responseCode = "409", description = "User already a member / program inactive",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/{userId}/programs/{programId}")
-    public ResponseEntity<BalanceResponse> joinProgram(
+    public BalanceResponse joinProgram(
             @Parameter(description = "User id") @PathVariable Long userId,
             @Parameter(description = "Program id") @PathVariable Long programId) {
         log.info("Received POST request for userId={} to join programId={}", userId, programId);
-        BalanceResponse response = userService.joinProgram(userId, programId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return userService.joinProgram(userId, programId);
     }
 
     @Operation(summary = "Remove a user's membership in a program",
@@ -157,12 +154,12 @@ public class UserController {
             @ApiResponse(responseCode = "409", description = "Non-zero points balance",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{userId}/programs/{programId}")
-    public ResponseEntity<Void> leaveProgram(
+    public void leaveProgram(
             @Parameter(description = "User id") @PathVariable Long userId,
             @Parameter(description = "Program id") @PathVariable Long programId) {
         log.info("Received DELETE request for userId={} to leave programId={}", userId, programId);
         userService.leaveProgram(userId, programId);
-        return ResponseEntity.noContent().build();
     }
 }

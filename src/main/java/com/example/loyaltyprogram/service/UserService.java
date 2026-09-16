@@ -42,38 +42,19 @@ public class UserService {
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
         log.debug("Attempting to create user with email={}", request.email());
-        Validate.notNull(request, "request");
-        Validate.email(request.email());
-        Validate.notBlank(request.firstName(), "firstName");
-        Validate.notBlank(request.lastName(), "lastName");
 
         if (userRepository.existsByEmail(request.email())) {
-            log.warn("Cannot create user. Email already in use: {}", request.email());
+            log.error("Cannot create user. Email already in use: {}", request.email());
             throw new ConflictException("EMAIL_ALREADY_EXISTS", "Email already in use: " + request.email());
         }
-
         User user = userMapper.toEntity(request);
 
         if (request.programId() != null) {
-            LoyaltyProgram program = findLoyaltyProgramById(request.programId());
-            LocalDateTime now = LocalDateTime.now();
-            if (!program.isActiveAt(now)) {
-                log.warn("Cannot assign user to programId={}. Program is expired or inactive", request.programId());
-                throw new ProgramExpiredException(program.getId());
-            }
-            Membership membership = new Membership();
-            user.addMembership(membership);
-            program.addMembership(membership);
+            assignToProgram(user, request.programId());
         }
-
-        try {
-            User saved = userRepository.save(user);
-            log.info("Created user id={} email={}", saved.getId(), saved.getEmail());
-            return userMapper.toResponse(saved);
-        } catch (DataIntegrityViolationException ex) {
-            log.warn("Data integrity violation on user creation for email={}", request.email());
-            throw new ConflictException("EMAIL_ALREADY_EXISTS", "Email already in use: " + request.email());
-        }
+        User saved = userRepository.save(user);
+        log.info("Created user id={} email={}", saved.getId(), saved.getEmail());
+        return userMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -103,9 +84,6 @@ public class UserService {
     @Transactional
     public UserResponse update(Long id, UpdateUserRequest request) {
         log.debug("Attempting to update userId={}", id);
-        Validate.notNull(request, "request");
-        Validate.notBlank(request.firstName(), "firstName");
-        Validate.notBlank(request.lastName(), "lastName");
         User user = findUserById(id);
         User updated = user.update(request);
         log.info("User updated successfully for userId={}", id);
@@ -123,29 +101,15 @@ public class UserService {
     @Transactional
     public BalanceResponse joinProgram(Long userId, Long programId) {
         log.debug("Attempting to join user id={} to program id={}", userId, programId);
+
         User user = findUserById(userId);
-
-        if (user.isDeactivated()) {
-            log.warn("Cannot join program. User id={} is deactivated", user.getId());
-            throw new ConflictException("USER_DEACTIVATED", "User id=" + user.getId() + " is deactivated");
-        }
-
         LoyaltyProgram program = findLoyaltyProgramById(programId);
 
-        if (membershipRepository.existsByUserIdAndProgramId(userId, programId)) {
-            log.warn("User id={} is already a member of program id={}", userId, programId);
-            throw new MembershipAlreadyExistsException(userId, programId);
-        }
+        validateUserAndProgramEligibility(user, program);
 
-        if (!program.isActiveAt(LocalDateTime.now())) {
-            log.warn("Cannot join program. Program id={} is inactive or expired", programId);
-            throw new ProgramExpiredException(programId);
-        }
-
-        Membership membership = new Membership();
-        user.addMembership(membership);
-        program.addMembership(membership);
+        Membership membership = createAndLinkMembership(user, program);
         Membership saved = membershipRepository.save(membership);
+
         log.info("User id={} successfully joined program id={}", userId, programId);
         return membershipMapper.toBalanceResponse(saved);
     }
@@ -153,16 +117,64 @@ public class UserService {
     @Transactional
     public void leaveProgram(Long userId, Long programId) {
         log.debug("Attempting to remove user id={} from program id={}", userId, programId);
-        Membership membership = membershipRepository.findByUserIdAndProgramId(userId, programId).orElseThrow(() -> {
-            log.warn("Membership not found for userId={} and programId={}", userId, programId);
-            return new MembershipNotFoundException(userId, programId);
-        });
 
-        if (membership.getPointsBalance() != 0) {
-            log.warn("Cannot remove membership for userId={} in programId={}. Points balance is non-zero ({})", userId, programId, membership.getPointsBalance());
-            throw new ConflictException("MEMBERSHIP_HAS_BALANCE", "Cannot remove membership with non-zero points balance (" + membership.getPointsBalance() + " points would be lost)");
+        Membership membership = findMembership(userId, programId);
+        validateMembershipCanBeLeft(membership);
+
+        unlinkMembershipFromEntities(membership);
+        membershipRepository.delete(membership);
+
+        log.info("User id={} successfully left program id={}", userId, programId);
+    }
+
+    private User findUserById(Long id) {
+        return userRepository.findById(id).orElseThrow(() -> {
+            log.error("User not found for id={}", id);
+            return new UserNotFoundException(id);
+        });
+    }
+
+    private LoyaltyProgram findLoyaltyProgramById(Long id) {
+        return programRepository.findById(id).orElseThrow(() -> {
+            log.error("Loyalty program not found for id={}", id);
+            return new ProgramNotFoundException(id);
+        });
+    }
+
+    private void validateUserAndProgramEligibility(User user, LoyaltyProgram program) {
+        if (user.isDeactivated()) {
+            log.error("Cannot join program. User id={} is deactivated", user.getId());
+            throw new ConflictException("USER_DEACTIVATED", "User id=" + user.getId() + " is deactivated");
         }
 
+        if (membershipRepository.existsByUserIdAndProgramId(user.getId(), program.getId())) {
+            log.error("User id={} is already a member of program id={}", user.getId(), program.getId());
+            throw new MembershipAlreadyExistsException(user.getId(), program.getId());
+        }
+
+        if (!program.isActiveAt(LocalDateTime.now())) {
+            log.error("Cannot join program. Program id={} is inactive or expired", program.getId());
+            throw new ProgramExpiredException(program.getId());
+        }
+    }
+
+    private Membership createAndLinkMembership(User user, LoyaltyProgram program) {
+        Membership membership = new Membership();
+        user.addMembership(membership);
+        program.addMembership(membership);
+        return membership;
+    }
+
+    private void validateMembershipCanBeLeft(Membership membership) {
+        if (membership.getPointsBalance() != 0) {
+            log.error("Cannot remove membership for userId={} in programId={}. Points balance is non-zero ({})",
+                    membership.getUser().getId(), membership.getProgram().getId(), membership.getPointsBalance());
+            throw new ConflictException("MEMBERSHIP_HAS_BALANCE",
+                    "Cannot remove membership with non-zero points balance (" + membership.getPointsBalance() + " points would be lost)");
+        }
+    }
+
+    private void unlinkMembershipFromEntities(Membership membership) {
         User user = membership.getUser();
         if (user != null && user.getMemberships() != null) {
             user.getMemberships().remove(membership);
@@ -172,22 +184,24 @@ public class UserService {
         if (program != null && program.getMemberships() != null) {
             program.getMemberships().remove(membership);
         }
-
-        membershipRepository.delete(membership);
-        log.info("User id={} successfully left program id={}", userId, programId);
     }
 
-    private User findUserById(Long id) {
-        return userRepository.findById(id).orElseThrow(() -> {
-            log.warn("User not found for id={}", id);
-            return new UserNotFoundException(id);
-        });
+    private Membership findMembership(Long userId, Long programId) {
+        return membershipRepository.findByUserIdAndProgramId(userId, programId)
+                .orElseThrow(() -> {
+                    log.error("Membership not found for userId={} and programId={}", userId, programId);
+                    return new MembershipNotFoundException(userId, programId);
+                });
     }
 
-    private LoyaltyProgram findLoyaltyProgramById(Long id) {
-        return programRepository.findById(id).orElseThrow(() -> {
-            log.warn("Loyalty program not found for id={}", id);
-            return new ProgramNotFoundException(id);
-        });
+    private void assignToProgram(User user, Long programId) {
+        LoyaltyProgram program = findLoyaltyProgramById(programId);
+        if (!program.isActiveAt(LocalDateTime.now())) {
+            log.error("Cannot assign user to programId={}. Program is expired or inactive", programId);
+            throw new ProgramExpiredException(program.getId());
+        }
+        Membership membership = new Membership();
+        user.addMembership(membership);
+        program.addMembership(membership);
     }
 }

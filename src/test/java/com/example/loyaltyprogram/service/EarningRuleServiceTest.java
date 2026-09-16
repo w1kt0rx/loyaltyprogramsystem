@@ -5,7 +5,6 @@ import com.example.loyaltyprogram.dto.request.UpdateEarningRuleRequest;
 import com.example.loyaltyprogram.dto.response.EarningRuleResponse;
 import com.example.loyaltyprogram.exception.ConflictException;
 import com.example.loyaltyprogram.exception.EarningRuleNotFoundException;
-import com.example.loyaltyprogram.exception.InvalidRequestException;
 import com.example.loyaltyprogram.exception.ProgramExpiredException;
 import com.example.loyaltyprogram.exception.ProgramNotFoundException;
 import com.example.loyaltyprogram.mapper.EarningRuleMapper;
@@ -80,45 +79,6 @@ public class EarningRuleServiceTest {
                 () -> Assertions.assertEquals(end, ruleCaptor.getValue().getPeriod().getEndDate()),
                 () -> Assertions.assertEquals(program, ruleCaptor.getValue().getProgram())
         );
-    }
-
-    @Test
-    void createRule_nullEventType_throwsInvalidRequestException() {
-        // given
-        CreateEarningRuleRequest request = new CreateEarningRuleRequest(null, 100, LocalDateTime.now(), null);
-        // when + then
-        InvalidRequestException ex = Assertions.assertThrows(
-                InvalidRequestException.class,
-                () -> earningRuleService.createRule(1L, request)
-        );
-        Assertions.assertEquals("eventType is required", ex.getMessage());
-        Mockito.verify(earningRuleRepository, Mockito.never()).save(any());
-    }
-
-    @Test
-    void createRule_nonPositivePoints_throwsInvalidRequestException() {
-        // given
-        CreateEarningRuleRequest request = new CreateEarningRuleRequest(EarningEventType.PURCHASE, 0, LocalDateTime.now(), null);
-        // when + then
-        InvalidRequestException ex = Assertions.assertThrows(
-                InvalidRequestException.class,
-                () -> earningRuleService.createRule(1L, request)
-        );
-        Assertions.assertEquals("points must be greater than 0", ex.getMessage());
-        Mockito.verify(earningRuleRepository, Mockito.never()).save(any());
-    }
-
-    @Test
-    void createRule_nullStartDate_throwsInvalidRequestException() {
-        // given
-        CreateEarningRuleRequest request = new CreateEarningRuleRequest(EarningEventType.PURCHASE, 100, null, null);
-        // when + then
-        InvalidRequestException ex = Assertions.assertThrows(
-                InvalidRequestException.class,
-                () -> earningRuleService.createRule(1L, request)
-        );
-        Assertions.assertEquals("startDate is required", ex.getMessage());
-        Mockito.verify(earningRuleRepository, Mockito.never()).save(any());
     }
 
     @Test

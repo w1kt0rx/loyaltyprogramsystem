@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,12 +36,13 @@ public class EarningRuleController {
             @ApiResponse(responseCode = "409", description = "Program expired or overlapping rule exists",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/programs/{programId}/earning-rules")
-    public ResponseEntity<EarningRuleResponse> createEarningRule(
+    public EarningRuleResponse createEarningRule(
             @Parameter(description = "Program id") @PathVariable Long programId,
             @RequestBody CreateEarningRuleRequest request) {
         log.info("Received POST request to create earning rule for programId={}", programId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(earningRuleService.createRule(programId, request));
+        return earningRuleService.createRule(programId, request);
     }
 
     @Operation(summary = "List earning rules for a program")
@@ -51,11 +51,12 @@ public class EarningRuleController {
             @ApiResponse(responseCode = "404", description = "Program does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @GetMapping("/programs/{programId}/earning-rules")
-    public ResponseEntity<List<EarningRuleResponse>> listRules(
+    public List<EarningRuleResponse> listRules(
             @Parameter(description = "Program id") @PathVariable Long programId) {
-        log.debug("Received GET request to list earning rules for programId={}", programId);
-        return ResponseEntity.ok(earningRuleService.listRules(programId));
+        log.info("Received GET request to list earning rules for programId={}", programId);
+        return earningRuleService.listRules(programId);
     }
 
     @Operation(summary = "Get an earning rule by id")
@@ -64,11 +65,12 @@ public class EarningRuleController {
             @ApiResponse(responseCode = "404", description = "Earning rule does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @GetMapping("/earning-rules/{ruleId}")
-    public ResponseEntity<EarningRuleResponse> getEarningRule(
+    public EarningRuleResponse getEarningRule(
             @Parameter(description = "Earning rule id") @PathVariable Long ruleId) {
-        log.debug("Received GET request for ruleId={}", ruleId);
-        return ResponseEntity.ok(earningRuleService.getEarningRule(ruleId));
+        log.info("Received GET request for ruleId={}", ruleId);
+        return earningRuleService.getEarningRule(ruleId);
     }
 
     @Operation(summary = "Update an earning rule",
@@ -82,12 +84,13 @@ public class EarningRuleController {
             @ApiResponse(responseCode = "409", description = "Overlapping rule exists for the same event type",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.OK)
     @PutMapping("/earning-rules/{ruleId}")
-    public ResponseEntity<EarningRuleResponse> updateEarningRule(
+    public EarningRuleResponse updateEarningRule(
             @Parameter(description = "Earning rule id") @PathVariable Long ruleId,
             @RequestBody UpdateEarningRuleRequest request) {
         log.info("Received PUT request to update ruleId={}", ruleId);
-        return ResponseEntity.ok(earningRuleService.updateEarningRule(ruleId, request));
+        return earningRuleService.updateEarningRule(ruleId, request);
     }
 
     @Operation(summary = "Delete an earning rule")
@@ -96,11 +99,11 @@ public class EarningRuleController {
             @ApiResponse(responseCode = "404", description = "Earning rule does not exist",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/earning-rules/{ruleId}")
-    public ResponseEntity<Void> deleteEarningRule(
+    public void deleteEarningRule(
             @Parameter(description = "Earning rule id") @PathVariable Long ruleId) {
         log.info("Received DELETE request for ruleId={}", ruleId);
         earningRuleService.delete(ruleId);
-        return ResponseEntity.noContent().build();
     }
 }

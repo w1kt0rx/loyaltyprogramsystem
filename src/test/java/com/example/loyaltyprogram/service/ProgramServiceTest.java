@@ -89,32 +89,6 @@ public class ProgramServiceTest {
     }
 
     @Test
-    void createProgram_blankName_throwsInvalidRequestException() {
-        // given
-        CreateProgramRequest request = new CreateProgramRequest("  ", "Description", LocalDateTime.now(), null);
-        // when + then
-        InvalidRequestException ex = Assertions.assertThrows(
-                InvalidRequestException.class,
-                () -> programService.createProgram(request)
-        );
-        Assertions.assertEquals("name cannot be blank", ex.getMessage());
-        Mockito.verify(programRepository, Mockito.never()).save(any());
-    }
-
-    @Test
-    void createProgram_nullStartDate_throwsInvalidRequestException() {
-        // given
-        CreateProgramRequest request = new CreateProgramRequest("Gold Program", "Description", null, null);
-        // when + then
-        InvalidRequestException ex = Assertions.assertThrows(
-                InvalidRequestException.class,
-                () -> programService.createProgram(request)
-        );
-        Assertions.assertEquals("startDate is required", ex.getMessage());
-        Mockito.verify(programRepository, Mockito.never()).save(any());
-    }
-
-    @Test
     void createProgram_nameAlreadyExists_throwsConflictException() {
         // given
         CreateProgramRequest request = new CreateProgramRequest("Existing Program", "Description", LocalDateTime.now(), null);

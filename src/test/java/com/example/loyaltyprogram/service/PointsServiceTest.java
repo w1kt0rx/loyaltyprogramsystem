@@ -60,19 +60,6 @@ public class PointsServiceTest {
     }
 
     @Test
-    void earnPoints_blankReferenceId_throwsInvalidRequestException() {
-        // given
-        EarnPointsRequest request = new EarnPointsRequest(EarningEventType.PURCHASE, 1L, null, "");
-        // when + then
-        InvalidRequestException ex = Assertions.assertThrows(
-                InvalidRequestException.class,
-                () -> pointsService.earnPoints(1L, request)
-        );
-        Assertions.assertEquals("referenceId cannot be blank", ex.getMessage());
-        Mockito.verifyNoInteractions(userRepository, transactionRepository);
-    }
-
-    @Test
     void earnPoints_bothVariantsProvided_throwsInvalidRequestException() {
         // given
         EarnPointsRequest request = new EarnPointsRequest(EarningEventType.PURCHASE, 1L, 10L, "REF-123");
