@@ -1,14 +1,18 @@
 package com.example.loyaltyprogram.exception.handler;
 
+import com.example.loyaltyprogram.dto.ErrorMessageDto;
 import com.example.loyaltyprogram.dto.response.ErrorResponse;
 import com.example.loyaltyprogram.dto.response.FieldErrorDetail;
 import com.example.loyaltyprogram.exception.BusinessException;
 import com.example.loyaltyprogram.exception.FieldValidationException;
+import com.example.loyaltyprogram.exception.InvalidRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
@@ -23,6 +27,17 @@ public class GlobalExceptionHandler {
         log.warn("Business exception occurred: code='{}', message='{}', status={}",
                 ex.getErrorCode(), ex.getMessage(), ex.getStatus());
         return status(ex);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorMessageDto handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        Throwable cause = ex.getCause();
+        if (cause instanceof InvalidRequestException) {
+            return new ErrorMessageDto(cause.getMessage());
+        }
+
+        return new ErrorMessageDto("Wrong json format");
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
